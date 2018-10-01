@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import Web3 from 'web3'
+import { Container, Row, Col, Button, Alert, Form, FormGroup, Label, Input, FormText } from 'reactstrap'
 
 import logo from './poly_logo.svg';
 import './App.css';
@@ -12,60 +13,116 @@ class App extends Component {
     super(props)
 
     this.state = {
-      loading:true,
-      account:null,
-      balance:0,
-      errorMsg:''
+      web3: null,
+      loading: true,
+      account: null,
+      balance: 0,
+      errorMsg: '',
+      requestAmount: 250,
+      polyFaucet: null
     }
   }
 
-  componentDidMount = async() => {
-    try{
+  componentDidMount() {
+    try {
 
-        //Connect to web3
-        const web3 = new Web3(Web3.givenProvider)
-        //Get logged in MetaMask ETH address
-        const accounts = await web3.eth.getAccounts()
-        //Instantiate the polyToken smart contract
-        const polyFaucet = new web3.eth.Contract(PolyTokenFaucet.abi, '0xB06d72a24df50D4E2cAC133B320c5E7DE3ef94cB')
-        //Get account's POLY balance
-        const polyBalance = await polyFaucet.methods.balanceOf(accounts[0]).call({ from: accounts[0] })
-        //We use web3.utils.fromWei to display the units of the balance from wei to ether
-        this.setState({loading:false, account:accounts[0], balance: web3.utils.fromWei(polyBalance,"ether")})
+      this.getBalance()
 
-    }catch(error){
-      console.log("Could not connect to web3",error)
-      this.setState({loading:false,errorMsg:"Could not connect to web3. Check console for error logs"})
+    } catch (error) {
+      console.log("Could not connect to web3", error)
+      this.setState({ loading: false, errorMsg: "Could not connect to web3. Check console for error logs" })
     }
+  }
+
+  getBalance = async () => {
+    //Connect to web3
+    const web3 = new Web3(Web3.givenProvider)
+    //Get logged in MetaMask ETH address
+    const accounts = await web3.eth.getAccounts()
+    //Instantiate the polyToken smart contract
+    const polyFaucet = new web3.eth.Contract(PolyTokenFaucet.abi, '0xB06d72a24df50D4E2cAC133B320c5E7DE3ef94cB')
+    //Get account's POLY balance
+    const polyBalance = await polyFaucet.methods.balanceOf(accounts[0]).call({ from: accounts[0] })
+    //We use web3.utils.fromWei to display the units of the balance from wei to ether
+    this.setState({ loading: false, web3: web3, account: accounts[0], balance: web3.utils.fromWei(polyBalance, "ether"), polyFaucet: polyFaucet })
+  }
+
+  handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const { web3, account, requestAmount, polyFaucet } = this.state
+    //Request tokens
+    polyFaucet.methods.getTokens(web3.utils.toWei(requestAmount.toString(), 'ether'), account).send({ from: account, gas: 100000 })
+      .then(function (result) {
+
+        console.log(result)
+
+      })
+  };
+
+  handleChange(evt) {
+    //Update state based on the input field's name attribute
+    this.setState({ [evt.target.name]: evt.target.value });
   }
 
   render() {
 
-    const {account, loading, balance, errorMsg} = this.state
+    const { account, loading, balance, errorMsg, requestAmount } = this.state
+
     return (
-      <div className="App">
+
+      <div>
         <header className="App-header">
           <img src={logo} alt="logo" />
-          <h1 className="App-title">Polymath Tutorial</h1>
         </header>
-        <div className="App-intro">
+        <Container>
 
-        {(loading)?(
-          <p>Loading...</p>
-        ):(
-          (errorMsg.length > 0)?(
-            <p>An error occurred: {errorMsg}</p>
-          ):(
-          <p>
-            Your ETH address is {account}<br />
-            Your POLY balance is {balance} POLY
-          </p>
-          )
-          
-        )}
-          
-        </div>
+          <div className="App-intro">
+
+            {(loading) ? (
+              <p>Loading...</p>
+            ) : (
+                // Display error if web3 connection fails
+                (errorMsg.length > 0) ? (
+                  <Row style={{ padding: '10px' }}>
+                    <Col xs='12'>
+                      <Alert color="danger">
+                        <strong>An error occurred:</strong> {errorMsg}
+                      </Alert>
+                    </Col>
+                  </Row>
+
+                ) : (
+                    // Display user information if web3 connection is successful
+                    <Row style={{ padding: '10px' }}>
+                      <Col xs='6'>
+                        <p>
+                          Your ETH address is {account}<br />
+                          Your POLY balance is {balance} POLY
+                    </p>
+
+                      </Col>
+                      <Col xs='6'>
+                        <Form onSubmit={(e) => this.handleSubmit(e)}>
+                          <FormGroup>
+                            <Label for="ethAddress">ETH Address</Label>
+                            <Input type="text" name="account" id="ethAddress" placeholder="type ETH address here" defaultValue={account} disabled />
+                          </FormGroup>
+                          <FormGroup>
+                            <Label for="polyAmount">Amount</Label>
+                            <Input type="text" name="requestAmount" id="requestAmount" placeholder="How much POLY would you like?" defaultValue={requestAmount} onChange={e => this.handleChange(e)} />
+                          </FormGroup>
+                          <Button color="primary" type="submit">Request POLY</Button>
+                        </Form>
+                      </Col>
+                    </Row>
+                  )
+              )}
+
+          </div>
+        </Container>
       </div>
+
     );
   }
 }
