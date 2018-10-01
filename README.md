@@ -8,7 +8,7 @@ Source code for tutorial on using web3 to connect to polymath contracts. See tut
 ## Todo
 - [x] Integrate web3
 - [x] Get Metamask address
-- [ ] Connect to PolyToken smart contract
-- [ ] Get POLY balance
-- [ ] Request POLY tokens
+- [x] Connect to PolyToken smart contract
+- [x] Get POLY balance
+- [x] Request POLY tokens
 
