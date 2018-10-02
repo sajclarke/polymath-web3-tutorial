@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import Web3 from 'web3'
-import { Container, Row, Col, Button, Alert, Form, FormGroup, Label, Input, FormText } from 'reactstrap'
+import { Container, Row, Col, Button, Alert, Form, FormGroup, Label, Input } from 'reactstrap'
 
 import logo from './poly_logo.svg';
 import './App.css';
@@ -23,20 +23,40 @@ class App extends Component {
     }
   }
 
-  componentDidMount() {
+  componentDidMount = async () => {
     try {
 
-      this.getBalance()
+      const web3 = await this.getWeb3()
+      await this.getBalance(web3)
 
     } catch (error) {
-      console.log("Could not connect to web3", error)
-      this.setState({ loading: false, errorMsg: "Could not connect to web3. Check console for error logs" })
+
+      this.setState({ loading: false, errorMsg: "Could not connect to web3. Please ensure that you have Metamask installed and unlocked" })
     }
   }
 
-  getBalance = async () => {
-    //Connect to web3
-    const web3 = new Web3(Web3.givenProvider)
+  getWeb3 = () => new Promise((resolve, reject) => {
+
+    let web3
+    // Checking if Web3 has been injected by the browser (Mist/MetaMask).
+    if (typeof window.web3 !== 'undefined') {
+      // Use Mist/MetaMask's provider.
+      web3 = new Web3(window.web3.currentProvider)
+      console.log('Injected web3 detected.');
+      resolve(web3)
+    } else {
+      // Fallback to localhost if no web3 injection. We've configured this to
+      // use the development console's port by default.
+      const provider = new Web3.providers.HttpProvider('http://127.0.0.1:9545')
+      web3 = new Web3(provider)
+      console.log('No web3 instance injected, using Local web3.');
+      resolve(web3)
+    }
+
+  })
+
+  getBalance = async (web3) => {
+
     //Get logged in MetaMask ETH address
     const accounts = await web3.eth.getAccounts()
     //Instantiate the polyToken smart contract
@@ -45,6 +65,7 @@ class App extends Component {
     const polyBalance = await polyFaucet.methods.balanceOf(accounts[0]).call({ from: accounts[0] })
     //We use web3.utils.fromWei to display the units of the balance from wei to ether
     this.setState({ loading: false, web3: web3, account: accounts[0], balance: web3.utils.fromWei(polyBalance, "ether"), polyFaucet: polyFaucet })
+
   }
 
   handleSubmit = async (event) => {
