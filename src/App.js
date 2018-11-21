@@ -24,47 +24,60 @@ class App extends Component {
   }
 
   componentDidMount = async () => {
-    try {
+    
+    setInterval(async()=>{
 
       const web3 = await this.getWeb3()
-      await this.getBalance(web3)
 
-    } catch (error) {
+      await this.getAccount(web3)
 
-      this.setState({ loading: false, errorMsg: "Could not connect to web3. Please ensure that you have Metamask installed and unlocked" })
-    }
+    },1000)
+    
+    
   }
 
   getWeb3 = () => new Promise((resolve, reject) => {
 
-    let web3
-    // Checking if Web3 has been injected by the browser (Mist/MetaMask).
-    if (typeof window.web3 !== 'undefined') {
-      // Use Mist/MetaMask's provider.
-      web3 = new Web3(window.web3.currentProvider)
-      console.log('Injected web3 detected.');
-      resolve(web3)
-    } else {
-      // Fallback to localhost if no web3 injection. We've configured this to
-      // use the development console's port by default.
-      const provider = new Web3.providers.HttpProvider('http://127.0.0.1:9545')
-      web3 = new Web3(provider)
-      console.log('No web3 instance injected, using Local web3.');
-      resolve(web3)
+    try{
+
+      if(typeof window.web3 !== undefined){
+
+        resolve(new Web3(Web3.givenProvider))
+
+      }else{
+        this.setState({errorMsg:'web3 not found'})
+      }
+    }catch(error){
+      
+      this.setState({errorMsg:'An error occurred trying to connect to web3'})
     }
 
   })
 
-  getBalance = async (web3) => {
-
+  getAccount = async (web3) => {
     //Get logged in MetaMask ETH address
     const accounts = await web3.eth.getAccounts()
+    if(accounts.length < 1){
+      
+      this.setState({loading: false,errorMsg:'Could not connect to Metamask. Please unlock your metamask'})
+
+    }else{
+
+      this.setState({loading: false, account:accounts[0], errorMsg:''})
+      await this.getBalance(web3, accounts)
+
+    }
+
+  }
+
+  getBalance = async (web3, accounts) => {
+
     //Instantiate the polyToken smart contract
     const polyFaucet = new web3.eth.Contract(PolyTokenFaucet.abi, '0xB06d72a24df50D4E2cAC133B320c5E7DE3ef94cB')
     //Get account's POLY balance
     const polyBalance = await polyFaucet.methods.balanceOf(accounts[0]).call({ from: accounts[0] })
     //We use web3.utils.fromWei to display the units of the balance from wei to ether
-    this.setState({ loading: false, web3: web3, account: accounts[0], balance: web3.utils.fromWei(polyBalance, "ether"), polyFaucet: polyFaucet })
+    this.setState({ loading: false, errorMsg:'', web3: web3, account: accounts[0], balance: web3.utils.fromWei(polyBalance, "ether"), polyFaucet: polyFaucet })
 
   }
 
@@ -117,17 +130,17 @@ class App extends Component {
                     // Display user information if web3 connection is successful
                     <Row style={{ padding: '10px' }}>
                       <Col xs='6'>
-                        <p>
-                          Your ETH address is {account}<br />
-                          Your POLY balance is {balance} POLY
-                    </p>
+                      <h4>ETH Address</h4>
+                        <p>{account}</p>
+                        <h4>POLY balance</h4>
+                        <p>{parseFloat(balance).toFixed(2)} POLY</p>
 
                       </Col>
                       <Col xs='6'>
                         <Form onSubmit={(e) => this.handleSubmit(e)}>
                           <FormGroup>
                             <Label for="ethAddress">ETH Address</Label>
-                            <Input type="text" name="account" id="ethAddress" placeholder="type ETH address here" defaultValue={account} disabled />
+                            <Input type="text" name="account" id="ethAddress" placeholder="type ETH address here" value={account} disabled />
                           </FormGroup>
                           <FormGroup>
                             <Label for="polyAmount">Amount</Label>
